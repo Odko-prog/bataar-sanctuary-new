@@ -28,8 +28,9 @@ import {
   AlertTriangle,
   HelpCircle
 } from "lucide-react";
-import { GoogleGenAI } from "@google/genai";
+
 import { usePWAInstall } from "../hooks/usePWAInstall";
+import { assertDeliveryAcknowledged, validBookingDates } from "../bookingDelivery";
 
 export type SupportedLang = "mn" | "en" | "ko" | "ja" | "zh" | "ru" | "de" | "fr";
 
@@ -493,16 +494,16 @@ export const AIAssistantWidget: React.FC = () => {
   const [inquiries, setInquiries] = useState<TouristInquiry[]>(() => {
     try {
       const saved = localStorage.getItem("bataar_crm_inquiries");
-      return saved ? JSON.parse(saved) : DEFAULT_INQUIRIES;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return DEFAULT_INQUIRIES;
+      return [];
     }
   });
 
   // Settings & PWA App
-  const [geminiApiKey, setGeminiApiKey] = useState(() => localStorage.getItem("bataar_gemini_api_key") || "");
-  const [notionApiKey, setNotionApiKey] = useState(() => localStorage.getItem("bataar_notion_api_key") || "");
-  const [notionWebhookUrl, setNotionWebhookUrl] = useState(() => localStorage.getItem("bataar_notion_webhook") || "");
+  const [geminiApiKey, setGeminiApiKey] = useState("");
+  const [notionApiKey, setNotionApiKey] = useState("");
+  const [notionWebhookUrl, setNotionWebhookUrl] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   const [showAppInstall, setShowAppInstall] = useState(false);
   const { isInstallable, isInstalled, isIOS, isAndroid, isInAppBrowser, isSafari, isChrome, install } = usePWAInstall();
@@ -584,7 +585,7 @@ export const AIAssistantWidget: React.FC = () => {
   }, [currentLang, t.welcome]);
 
   useEffect(() => {
-    localStorage.setItem("bataar_crm_inquiries", JSON.stringify(inquiries));
+    try { localStorage.setItem("bataar_crm_inquiries", JSON.stringify(inquiries)); } catch { /* Browser storage may be disabled; email delivery is independent. */ }
   }, [inquiries]);
 
   useEffect(() => {
@@ -603,9 +604,7 @@ export const AIAssistantWidget: React.FC = () => {
   };
 
   const handleSaveSettings = () => {
-    localStorage.setItem("bataar_gemini_api_key", geminiApiKey);
-    localStorage.setItem("bataar_notion_api_key", notionApiKey);
-    localStorage.setItem("bataar_notion_webhook", notionWebhookUrl);
+    // Optional keys remain in memory for this tab only; never persist credentials.
     setShowSettings(false);
   };
 
@@ -667,7 +666,7 @@ We offer private eco-lodges ($65-$160/night), 100% solar power, Starlink Wi-Fi, 
   };
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim()) return;
+    if (!inputMessage.trim() || isTyping) return;
 
     const userText = inputMessage.trim();
     setInputMessage("");
@@ -686,6 +685,7 @@ We offer private eco-lodges ($65-$160/night), 100% solar power, Starlink Wi-Fi, 
       let replyText = "";
 
       if (geminiApiKey.trim()) {
+        const { GoogleGenAI } = await import("@google/genai");
         const ai = new GoogleGenAI({ apiKey: geminiApiKey.trim() });
         const systemInstruction = `You are the concierge at "Bataar Sanctuary (Батаарын Өлгий)", a luxury eco-retreat in South Gobi, Mongolia.
 Language: Respond in ${currentLang === "mn" ? "Mongolian" : currentLang === "ko" ? "Korean" : currentLang === "zh" ? "Chinese" : currentLang === "ja" ? "Japanese" : currentLang === "ru" ? "Russian" : "English"}.
@@ -722,7 +722,7 @@ Features: 100% solar energy, Starlink Wi-Fi, deep well water, organic pasture di
         {
           id: `msg-${Date.now() + 1}`,
           sender: "assistant",
-          text: generateLocalReply(userText),
+          text: (currentLang === "mn" ? "AI холболт амжилтгүй. Доорх нь автомат лавлахын хариу: " : "AI connection failed. Local reference answer: ") + generateLocalReply(userText),
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
         }
       ]);
@@ -733,12 +733,16 @@ Features: 100% solar energy, Starlink Wi-Fi, deep well water, organic pasture di
 
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!bookingForm.name || !bookingForm.email) return;
+    if (!bookingForm.name.trim() || !bookingForm.email.trim() || isSubmittingBooking) return;
+    if (!validBookingDates(bookingForm.arrivalDate, bookingForm.departureDate)) {
+      setBookingSuccessMsg(currentLang === "mn" ? "Буцах өдөр ирэх өдрөөс хойш байх ёстой." : "Departure must be after arrival.");
+      return;
+    }
 
     setIsSubmittingBooking(true);
 
     const newInquiry: TouristInquiry = {
-      id: `inq-${Date.now().toString().slice(-4)}`,
+      id: `inq-${crypto.randomUUID()}`,
       name: bookingForm.name,
       email: bookingForm.email,
       phone: bookingForm.phone,
@@ -752,11 +756,12 @@ Features: 100% solar energy, Starlink Wi-Fi, deep well water, organic pasture di
       language: currentLang.toUpperCase()
     };
 
-    setInquiries((prev) => [newInquiry, ...prev]);
+    // Register locally only after the delivery service acknowledges the request.
 
     // Send real email notification to btvmentogoo@gmail.com
     try {
-      await fetch("https://formsubmit.co/ajax/btvmentogoo@gmail.com", {
+      const deliveryResponse = await fetch("https://formsubmit.co/ajax/btvmentogoo@gmail.com", {
+        signal: AbortSignal.timeout(15000),
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -776,7 +781,14 @@ Features: 100% solar energy, Starlink Wi-Fi, deep well water, organic pasture di
           Илгээсэн_огноо: newInquiry.createdAt
         })
       });
-    } catch {}
+      const delivery = await deliveryResponse.json();
+      assertDeliveryAcknowledged(deliveryResponse.ok, delivery);
+      setInquiries((prev) => [newInquiry, ...prev]);
+    } catch {
+      setIsSubmittingBooking(false);
+      setBookingSuccessMsg(currentLang === "mn" ? "Захиалга илгээгдээгүй. Мэдээллээ хадгалсан хэвээр тул дахин оролдох эсвэл 7201 0099 дугаарт залгана уу." : "Your request was not sent. Your form is preserved; retry or call +976 7201 0099.");
+      return;
+    }
 
     setIsSubmittingBooking(false);
     setBookingSuccessMsg(t.bookingSent);
@@ -966,6 +978,7 @@ Phone: +976 7201 0099`;
             </div>
           </div>
 
+          <p className="px-4 py-2 text-xs text-stone-600">{currentLang === "mn" ? "Захиалгын жагсаалт зөвхөн энэ төхөөрөмжид хадгалагдана. Notion синк холбогдоогүй. Түлхүүргүй чат автомат лавлах ашиглана." : "Inquiry history is stored on this device only. Notion sync is not connected. Chat without a key uses local reference replies."}</p>
           {/* Navigation Bar */}
           <div className="grid grid-cols-5 bg-[#F2EDE4]/70 p-1 border-b border-stone-200/80 text-[10.5px] font-medium">
             <button
@@ -1053,7 +1066,7 @@ Phone: +976 7201 0099`;
 
               <div className="space-y-1.5">
                 <label className="text-stone-700 font-medium flex items-center justify-between">
-                  <span>Gemini API Key (Сонголтоор)</span>
+                  <span>Gemini API Key (энэ tab-д түр ашиглана)</span>
                   <span className="text-[10px] text-amber-700 font-bold">Gemini 3.8 Flash</span>
                 </label>
                 <input
@@ -1069,7 +1082,7 @@ Phone: +976 7201 0099`;
                 <label className="text-stone-700 font-medium">Notion Integration Token</label>
                 <input
                   type="password"
-                  value={notionApiKey}
+                  disabled title="Notion sync is not connected" value={notionApiKey}
                   onChange={(e) => setNotionApiKey(e.target.value)}
                   placeholder="secret_..."
                   className="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-stone-900 focus:outline-none focus:border-amber-500 text-xs font-mono shadow-2xs"
@@ -1080,7 +1093,7 @@ Phone: +976 7201 0099`;
                 <label className="text-stone-700 font-medium">Auto-Sync Webhook URL</label>
                 <input
                   type="text"
-                  value={notionWebhookUrl}
+                  disabled title="Notion sync is not connected" value={notionWebhookUrl}
                   onChange={(e) => setNotionWebhookUrl(e.target.value)}
                   placeholder="https://hook.make.com/..."
                   className="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-stone-900 focus:outline-none focus:border-amber-500 text-xs font-mono shadow-2xs"
