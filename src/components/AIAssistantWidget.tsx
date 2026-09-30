@@ -1509,6 +1509,7 @@ Phone: +976 7201 0099`;
                   )}
                 </button>
               </form>
+              <a className="block mt-3 rounded-xl border border-amber-300 p-3 text-center text-xs text-stone-900" href={`mailto:bataartravel@gmail.com?subject=${encodeURIComponent("Bataar reservation request")}&body=${encodeURIComponent(`Name: ${bookingForm.name}\nEmail: ${bookingForm.email}\nPhone: ${bookingForm.phone}\nArrival: ${bookingForm.arrivalDate}\nDeparture: ${bookingForm.departureDate}\nRoom: ${bookingForm.roomType}\nGuests: ${bookingForm.guests}\nNotes: ${bookingForm.notes}`)}`}>Өөрийн имэйлээр хүсэлт илгээх / Send with your email app</a>
             </div>
           )}
 
