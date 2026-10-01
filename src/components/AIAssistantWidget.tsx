@@ -422,7 +422,7 @@ const DEFAULT_INQUIRIES: TouristInquiry[] = [
     phone: "+82 10 9382 1102",
     arrivalDate: "2026-08-04",
     departureDate: "2026-08-08",
-    roomType: "Family 2-Bedroom Suite ($160/night)",
+    roomType: "Family Suite",
     guests: 4,
     notes: "Family trip with 2 kids. Want camel sunset safari and private ger experience with Starlink Wi-Fi.",
     createdAt: "2026-09-25 18:45",
@@ -1433,12 +1433,38 @@ Phone: +976 7201 0099`;
                     onChange={(e) => setBookingForm({ ...bookingForm, roomType: e.target.value })}
                     className="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-stone-900 text-xs focus:outline-none focus:border-amber-500 shadow-2xs"
                   >
-                    <option value="Deluxe Wooden Lodge">Deluxe Wooden Lodge</option>
-                    <option value="Standard Twin Room">Standard Twin Room</option>
-                    <option value="Family Suite">Family Suite — Master double bed, private bath</option>
+                    <option value="Deluxe Wooden Lodge">Deluxe Wooden Lodge — single 450,000₮; couple total 650,000₮</option>
+                    <option value="Standard Twin Room">Standard Twin Room — 260,000₮ / person; single 390,000₮</option>
+                    <option value="Family Suite">Family Suite — 650,000₮ / room / night, 3 meals included</option>
                   </select>
                 </div>
 
+                {(bookingForm.roomType === 'Deluxe Wooden Lodge' || bookingForm.roomType === 'Family Suite') && (
+                  <div className="rounded-xl bg-amber-50 p-3 text-xs text-stone-800 space-y-1">
+                    <p>{bookingForm.roomType === 'Family Suite' ? 'Гэр бүлийн өрөө / Family room' : 'Люкс өрөө / Deluxe room'} — өрөө, хоногийн нийт үнэ / total per room, per night</p>
+                    {bookingForm.roomType === 'Family Suite' ? (
+                      <p>Өрөөний нийт үнэ / Room total: 650,000₮ / хоног / night.</p>
+                    ) : (
+                      <>
+                        <p>Ганцаар, 1 хүн / Single: 450,000₮.</p>
+                        <p>Хосоороо, 2 хүн / Couple: нийт / total 650,000₮.</p>
+                      </>
+                    )}
+                    <p>Зочин бүрийн өглөөний цай, өдөр, оройн хоол багтсан / Includes three meals for each guest.</p>
+                    {bookingForm.roomType === 'Deluxe Wooden Lodge' && bookingForm.guests > 2 && <p>3 ба түүнээс олон хүний нийт үнийг бааз батална / Camp confirms the total for 3 or more guests.</p>}
+                    <p>Бааз өрөөний боломж, эцсийн үнийг батална / Camp confirms availability and the final quote.</p>
+                  </div>
+                )}
+                {bookingForm.roomType === 'Standard Twin Room' && (
+                  <div className="rounded-xl bg-amber-50 p-3 text-xs text-stone-800 space-y-1">
+                    <p>Энгийн байр / Standard room — хүн, хоног / per person, per night</p>
+                    <p>Хамт байрлах / Shared: 260,000₮ (≈ $72.31). Ганцаар / Single: 390,000₮ (≈ $108.46).</p>
+                    <p>Өдрийн 3 хоол багтсан / Includes breakfast, lunch and dinner.</p>
+                    <p>Байр: 130,000₮; ганцаар 260,000₮. Хоол: 40,000₮ + 45,000₮ + 45,000₮.</p>
+                    <p>Орчуулагч, жолооч / Guide, driver: 190,000₮ / хүн, хоног.</p>
+                    <p>USD: 1$ = 3,595.63₮ (2026-09-30), ойролцоо / indicative. Бааз үнэ, боломжийг батална / Camp confirms the final quote.</p>
+                  </div>
+                )}
                 <div className="space-y-1">
                   <label className="text-[10px] text-stone-500 uppercase tracking-wider font-semibold">{t.guests}</label>
                   <select
