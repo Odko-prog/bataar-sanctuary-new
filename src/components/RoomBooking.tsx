@@ -1,8 +1,10 @@
-import React, {useState} from 'react';
+import React from 'react';
 import {roomStayPrice, type Room} from '../roomStayPrice';
 
 const rooms = {standard:'Энгийн өрөө', deluxe:'Люкс өрөө', family:'Гэр бүлийн өрөө'};
-export function RoomBooking({initialRoom, onClose}: {initialRoom?: string; onClose: () => void}) {
+export function RoomBooking({initialRoom, onClose, reactRuntime}: {initialRoom?: string; onClose: () => void; reactRuntime: typeof React}) {
+  // The existing application embeds its own React runtime; hooks must use that renderer.
+  const useState = reactRuntime.useState;
   const [room, setRoom] = useState<Room>(initialRoom && initialRoom in rooms ? initialRoom as Room : 'standard');
   const [guests, setGuests] = useState(2);
   const [arrival, setArrival] = useState('');

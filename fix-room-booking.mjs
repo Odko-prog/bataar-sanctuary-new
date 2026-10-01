@@ -8,6 +8,6 @@ const replacements = [
 for(const [old,value] of replacements){if(source.split(old).length!==2)throw new Error('Unexpected match: '+old);source=source.replace(old,value);}
 source='import {RoomBooking} from "./components/RoomBooking";\n'+source;
 const boundary='const LegacyTourBooking=';
-source=source.replace(boundary,'const Z5=props=>props.initialPackage?a.jsx(LegacyTourBooking,props):a.jsx(RoomBooking,{initialRoom:props.initialSite,onClose:props.onClose});'+boundary);
+source=source.replace(boundary,'const Z5=props=>props.initialPackage?a.jsx(LegacyTourBooking,props):a.jsx(RoomBooking,{initialRoom:props.initialSite,onClose:props.onClose,reactRuntime:b});'+boundary);
 writeFileSync(path,source);
 console.log('Room booking is separate from tour booking and receives selected room.');
