@@ -1,14 +1,7 @@
 import React, {useState} from 'react';
+import {roomStayPrice, type Room} from '../roomStayPrice';
 
 const rooms = {standard:'Энгийн өрөө', deluxe:'Люкс өрөө', family:'Гэр бүлийн өрөө'};
-type Room = keyof typeof rooms;
-export function roomStayPrice(room: Room, guests: number, nights: number) {
-  if (!Number.isInteger(guests) || guests < 1 || !Number.isInteger(nights) || nights < 1) return null;
-  const day = room === 'standard' ? guests * 260000 + (guests % 2 ? 130000 : 0)
-    : room === 'deluxe' ? Math.floor(guests / 2) * 650000 + (guests % 2 ? 450000 : 0)
-    : Math.ceil(guests / 6) * 650000;
-  return day * nights;
-}
 export function RoomBooking({initialRoom, onClose}: {initialRoom?: string; onClose: () => void}) {
   const [room, setRoom] = useState<Room>(initialRoom && initialRoom in rooms ? initialRoom as Room : 'standard');
   const [guests, setGuests] = useState(2);
